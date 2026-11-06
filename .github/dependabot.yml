@@ -1,0 +1,40 @@
+# Dependabot configuration.
+#
+# Only ecosystems with a committed manifest are listed. At Milestone 1 that is
+# the GitHub Actions ecosystem alone: `uses:` references live in
+# .github/workflows/ci.yml. Backend (pip) and frontend (npm) entries are added
+# in the milestones that commit pyproject.toml and package.json, and Docker when
+# the first Dockerfile lands. The `dependabot-config` CI job fails if an entry
+# has no matching manifest, so this file cannot drift ahead of reality.
+#
+# Actions are pinned to commit SHAs with a version comment on the same line, so
+# Dependabot updates both the SHA and the comment together.
+
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # Group action bumps into one pull request: a single CI run instead of
+    # several on a repository with a small free-tier minute budget.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
+
+  # --- Added with their manifests -------------------------------------------
+  # - package-ecosystem: pip
+  #   directory: /backend
+  #   schedule: { interval: weekly }
+  # - package-ecosystem: npm
+  #   directory: /frontend
+  #   schedule: { interval: weekly }
+  # - package-ecosystem: docker
+  #   directory: /
+  #   schedule: { interval: weekly }

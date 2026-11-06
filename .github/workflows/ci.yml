@@ -1,0 +1,352 @@
+# PHISHGUARD continuous integration.
+#
+# Milestone 1 runs only what is meaningful for a repository with no application
+# code yet: repository hygiene, secret scanning and Dependabot configuration
+# validation. Backend tests, frontend tests, linting, type checking, dependency
+# auditing and container scanning are added in the milestones that introduce
+# their targets. A green check here means the checks below ran and passed; it
+# does not mean the project builds.
+#
+# Conventions enforced by the hygiene job:
+#   * third-party actions are pinned to a full commit SHA, with the version in a
+#     trailing comment on the same line;
+#   * jobs declare the least privilege they need;
+#   * pull_request_target is never used;
+#   * no repository secret is referenced anywhere.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege by default: read the repository, nothing else. No job here
+# needs more, and no repository secret is exposed to any job.
+permissions:
+  contents: read
+
+# A newer push to the same branch makes an in-flight run obsolete.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # Repository hygiene: structural expectations, disclosure controls, and
+  # workflow supply-chain rules. Fails closed on anything it cannot check.
+  # ---------------------------------------------------------------------------
+  repository-hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify required foundation files exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for f in \
+            .gitignore \
+            .env.example \
+            README.md \
+            docs/ARCHITECTURE.md \
+            docs/SECURITY.md \
+            docs/DEVELOPMENT.md \
+            .github/workflows/ci.yml \
+            .github/dependabot.yml; do
+            if [ ! -f "$f" ]; then
+              echo "::error file=$f::Required file is missing: $f"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          echo "All required foundation files are present."
+
+      - name: Check for committed evidence and environment files
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Evidence and .env files are disclosure risks. Only synthetic test
+          # fixtures under a tests/ directory may be committed.
+          mapfile -t offenders < <(
+            git ls-files -z \
+              | xargs -0 -r -n1 printf '%s\n' \
+              | grep -E '(^|/)\.env(\.|$)|\.eml$|\.msg$|\.emlx$' \
+              | grep -vE '(^|/)\.env\.example$' \
+              | grep -vE '(^|/)tests/' || true
+          )
+          if [ "${#offenders[@]}" -gt 0 ]; then
+            for f in "${offenders[@]}"; do
+              echo "::error file=$f::Evidence or environment file must not be committed: $f"
+            done
+            exit 1
+          fi
+          echo "No committed evidence or environment files."
+
+      - name: Check that generated dependencies and build output are not tracked
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t offenders < <(
+            git ls-files -z \
+              | xargs -0 -r -n1 printf '%s\n' \
+              | grep -E '(^|/)node_modules/|(^|/)__pycache__/|(^|/)dist/|(^|/)\.venv/' \
+              || true
+          )
+          if [ "${#offenders[@]}" -gt 0 ]; then
+            for f in "${offenders[@]}"; do
+              echo "::error file=$f::Generated or dependency file must not be committed: $f"
+            done
+            exit 1
+          fi
+          echo "No generated dependencies or build output tracked."
+
+      - name: Check workflows for least privilege and safe triggers
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+
+          # pull_request_target hands repository secrets to code from forks.
+          if grep -rnE '^[[:space:]]*pull_request_target[[:space:]]*:' .github/workflows/; then
+            echo "::error::pull_request_target is forbidden. Use pull_request."
+            status=1
+          fi
+
+          # A workflow-level permissions block must exist in every workflow and
+          # must not grant write access at that level.
+          shopt -s nullglob
+          workflows=(.github/workflows/*.yml .github/workflows/*.yaml)
+          if [ "${#workflows[@]}" -eq 0 ]; then
+            echo "::error::No workflow files found."
+            exit 1
+          fi
+          for wf in "${workflows[@]}"; do
+            if ! grep -qE '^permissions:' "$wf"; then
+              echo "::error file=$wf::Workflow must declare a top-level permissions block."
+              status=1
+            fi
+            if grep -A20 -E '^permissions:' "$wf" | grep -qE '^[[:space:]]+[a-z-]+:[[:space:]]*write([[:space:]]|$)'; then
+              echo "::error file=$wf::Workflow-level permissions must not grant write access; scope writes to a single job."
+              status=1
+            fi
+          done
+
+          if [ "$status" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Workflow permissions and triggers are within policy."
+
+      - name: Check third-party actions are pinned to commit SHAs
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Every `uses:` must be either a local action (./path) or pinned to a
+          # 40 character commit SHA followed by a version comment on that line.
+          # Comment lines are skipped so that documentation mentioning `uses:`
+          # is not mistaken for a real reference.
+          status=0
+          while IFS= read -r line; do
+            case "$line" in
+              *[![:space:]]*) ;;
+              *) continue ;;
+            esac
+            printf '%s' "$line" | grep -qE '^[[:space:]]*#' && continue
+            ref="${line#*uses:}"
+            ref="${ref%%#*}"
+            ref="$(printf '%s' "$ref" | tr -d '[:space:]')"
+            [ -z "$ref" ] && continue
+            case "$ref" in
+              ./*|docker://*) continue ;;
+            esac
+            if ! printf '%s' "$ref" | grep -qE '^[A-Za-z0-9._/-]+@[0-9a-f]{40}$'; then
+              echo "::error::Action is not pinned to a full commit SHA: $ref"
+              status=1
+            elif ! printf '%s' "$line" | grep -qE '#[[:space:]]*v?[0-9]'; then
+              echo "::error::Pinned action needs a version comment on the same line: $line"
+              status=1
+            fi
+          done < <(grep -rhE '^[[:space:]]*-?[[:space:]]*uses:' .github/workflows/ || true)
+          if [ "$status" -ne 0 ]; then
+            exit 1
+          fi
+          echo "All third-party actions are SHA-pinned with a version comment."
+
+      - name: Check that no workflow references repository secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The automatic token is not a stored credential. Anything else would
+          # tie CI to a secret that pull-request runs cannot safely receive.
+          if grep -rnE '\$\{\{[[:space:]]*secrets\.' .github/workflows/ \
+            | grep -vE '\$\{\{[[:space:]]*secrets\.GITHUB_TOKEN[[:space:]]*\}\}' ; then
+            echo "::error::Workflows must not reference repository secrets until a job has a documented need."
+            exit 1
+          fi
+          echo "No repository secrets referenced by workflows."
+
+      - name: Validate YAML syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(
+            git ls-files -z \
+              | xargs -0 -r -n1 printf '%s\n' \
+              | grep -E '(^|/)\.github/.*\.ya?ml$' || true
+          )
+          python3 - "${files[@]}" <<'PY'
+          import sys
+          import yaml
+
+          failures = 0
+          for path in sys.argv[1:]:
+              try:
+                  with open(path, "r", encoding="utf-8") as handle:
+                      yaml.safe_load(handle)
+              except yaml.YAMLError as exc:
+                  print(f"::error file={path}::Invalid YAML: {exc}")
+                  failures += 1
+              else:
+                  print(f"OK {path}")
+          sys.exit(1 if failures else 0)
+          PY
+
+  # ---------------------------------------------------------------------------
+  # Secret scanning: current tree and full commit history.
+  #
+  # The official gitleaks action is not used because it requires a paid licence
+  # for organisations and reads the workflow token. The released binary is
+  # downloaded, verified against the checksums published with that release, and
+  # run directly. The scan needs no token and no secret.
+  # ---------------------------------------------------------------------------
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # full history: a secret removed in a later commit is still exposed
+          filter: blob:none # keep objects out of the working tree until gitleaks walks history
+
+      - name: Install verified gitleaks release
+        shell: bash
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          set -euo pipefail
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            --output "/tmp/${archive}" "$url"
+          printf '%s  %s\n' "$GITLEAKS_SHA256" "/tmp/${archive}" | sha256sum --check --strict -
+          tar --extract --gzip --file "/tmp/${archive}" --directory /tmp gitleaks
+          install --mode 0755 /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Scan current tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          gitleaks dir . --no-banner --redact --verbose
+
+      - name: Scan full commit history
+        shell: bash
+        run: |
+          set -euo pipefail
+          gitleaks git . --no-banner --redact --verbose
+
+  # ---------------------------------------------------------------------------
+  # Dependabot configuration: valid YAML, and only ecosystems (and directories)
+  # that exist in the repository. Guards against both a broken config and
+  # invented dependency manifests.
+  # ---------------------------------------------------------------------------
+  dependabot-config:
+    name: Dependabot config
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate ecosystem entries against committed manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import sys
+
+          import yaml
+
+          config_path = ".github/dependabot.yml"
+          with open(config_path, "r", encoding="utf-8") as handle:
+              config = yaml.safe_load(handle)
+
+          if not isinstance(config, dict) or config.get("version") != 2:
+              print(f"::error file={config_path}::Expected version: 2")
+              sys.exit(1)
+
+          updates = config.get("updates")
+          if not isinstance(updates, list) or not updates:
+              print(f"::error file={config_path}::Expected a non-empty updates list")
+              sys.exit(1)
+
+          # An ecosystem is only allowed when its manifest really exists there,
+          # and only in a directory that is part of the repository.
+          allowed = {
+              "github-actions": lambda d: True,
+              "pip": lambda d: any(
+                  os.path.isfile(os.path.join(d, name))
+                  for name in ("pyproject.toml", "requirements.txt")
+              ),
+              "npm": lambda d: os.path.isfile(os.path.join(d, "package.json")),
+              "docker": lambda d: any(
+                  os.path.isfile(os.path.join(d, name))
+                  for name in ("Dockerfile", "compose.yml", "docker-compose.yml")
+              ),
+          }
+
+          failures = 0
+          for entry in updates:
+              ecosystem = entry.get("package-ecosystem")
+              directory = entry.get("directory", "/")
+              local_dir = directory.lstrip("/") or "."
+
+              if ecosystem not in allowed:
+                  print(f"::error file={config_path}::Unsupported ecosystem: {ecosystem}")
+                  failures += 1
+                  continue
+              if not os.path.isdir(local_dir):
+                  print(f"::error file={config_path}::Directory does not exist: {directory}")
+                  failures += 1
+                  continue
+              if not allowed[ecosystem](local_dir):
+                  print(
+                      f"::error file={config_path}::No {ecosystem} manifest in {directory}; "
+                      "add the manifest first or remove this entry"
+                  )
+                  failures += 1
+                  continue
+              if not isinstance(entry.get("schedule"), dict):
+                  print(f"::error file={config_path}::Missing schedule for {ecosystem} in {directory}")
+                  failures += 1
+              print(f"OK {ecosystem} in {directory}")
+
+          sys.exit(1 if failures else 0)
+          PY

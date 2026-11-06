@@ -1,0 +1,195 @@
+# ---------------------------------------------------------------------------
+# PHISHGUARD .gitignore
+#
+# Secrets, generated dependencies, local phishing evidence and machine-specific
+# state must never enter version control. This repository is intended to be
+# public, so every rule here is a disclosure control as well as a hygiene rule.
+#
+# Companion file: .opencode/.gitignore (kept as-is, covers the plugin install).
+# ---------------------------------------------------------------------------
+
+# --- Local secrets and environment ------------------------------------------
+# .env.example is the only environment file that may be committed.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*credentials*.json
+service-account*.json
+*token*.txt
+*token*.json
+*secret*.txt
+
+# --- Python ------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# --- Python tooling caches and reports --------------------------------------
+.pytest_cache/
+.tox/
+.nox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.pytype/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
+nosetests.xml
+ipython/
+junit*.xml
+bandit-report.json
+pip-audit-report.json
+
+# --- Node.js and frontend ----------------------------------------------------
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+.vite/
+*.tsbuildinfo
+dist/
+dist-ssr/
+coverage/
+storybook-static/
+playwright-report/
+test-results/
+
+# --- Local phishing evidence and uploaded material --------------------------
+# Raw emails, their attachments and anything extracted from them are sensitive
+# by definition. Only synthetic, sanitised fixtures may be committed, and only
+# under a tests/ directory, where the negation below re-allows them.
+evidence/
+uploads/
+data/uploads/
+*.eml
+*.msg
+*.emlx
+!**/tests/**/*.eml
+!**/tests/**/*.msg
+!**/tests/**/*.emlx
+
+# --- Database files and backups ---------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.sql.gz
+*.dump
+*.dmp
+pgdata/
+postgres-data/
+backups/
+*.bak
+
+# --- Docker local development artefacts -------------------------------------
+# Dockerfiles, compose.yml and docker-compose.yml are committed; local overrides
+# and build leftovers are not.
+.docker/
+docker-compose.override.yml
+docker-compose.override.yaml
+compose.override.yml
+compose.override.yaml
+docker-volume-data/
+
+# --- Logs and temporary files ------------------------------------------------
+*.log
+logs/
+tmp/
+temp/
+.cache/
+*.tmp
+*.swp
+*.swo
+*~
+
+# --- IDEs and editors --------------------------------------------------------
+.idea/
+.vscode/
+*.iml
+*.code-workspace
+.project
+.classpath
+.settings/
+
+# --- Operating system --------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- OpenCode and ECC local tooling -----------------------------------------
+# The third-party skill bundles in .opencode/skills are imported from the
+# machine-global ECC installation. Three of them ship without a licence
+# declaration and one vendors a 21 MB prebuilt binary, so they stay local
+# instead of being republished. See docs/DEVELOPMENT.md for the licence table
+# and for how to commit a skill deliberately once its licence is confirmed.
+.opencode/skills/
+.opencode/node_modules/
+
+# Project-local command wrapper for the locally installed design skill. The
+# command itself contains no third-party code, but it invokes a skill that is
+# not published, so it stays local until that skill's redistribution rights are
+# settled. This is an exact path, not a directory rule: other commands under
+# .opencode/commands/ remain eligible.
+.opencode/commands/impeccable.md
+
+# Machine-specific OpenCode state, credentials and backup files.
+# OpenCode can write auth material, install state and timestamped backups next
+# to project configuration; none of it belongs in a public repository.
+.opencode/auth.json
+.opencode/state.json
+.opencode/ecc-install-state.json
+.opencode/*.bak
+.opencode/*.bak.*
+.opencode/.DS_Store
+
+# Personal agent, command and plugin directories. Only the shared design
+# command is published today; everything else stays local until reviewed.
+.opencode/agents/
+.opencode/agent/
+.opencode/plugins/
+.opencode/tools/
+.opencode/hooks/
+.opencode/mcp-configs/
