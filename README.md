@@ -140,7 +140,7 @@ Full detail lives in [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Development status
 
-Milestone 1 — repository foundation. Present in the repository:
+Milestone 2.1 — backend scaffolding. Present in the repository:
 
 | Item | State |
 |---|---|
@@ -150,16 +150,26 @@ Milestone 1 — repository foundation. Present in the repository:
 | `docs/ARCHITECTURE.md` | Created |
 | `docs/SECURITY.md` | Created |
 | `docs/DEVELOPMENT.md` | Created |
-| `.github/workflows/ci.yml` | Created — hygiene, Gitleaks and Dependabot config validation |
-| `.github/dependabot.yml` | Created — GitHub Actions ecosystem only |
-| `LICENSE` | Created — MIT, copyright holder placeholder pending |
+| `.github/workflows/ci.yml` | Created — hygiene, backend quality, Gitleaks, Dependabot config validation |
+| `.github/dependabot.yml` | Created — GitHub Actions and pip (`/backend`) ecosystems |
+| `LICENSE` | Created — MIT |
 | `PHASE2-ARCHITECTURE.md` | Preserved planning record from the previous phase |
 | `.opencode/` | Preserved working OpenCode/ECC configuration |
+| `backend/` | FastAPI skeleton: config, logging, `GET /health`, `GET /api/v1/health`, 31 tests, CI-integrated |
 
-Nothing else exists. There is no application code, no test suite, no dependency
-manifest, no Dockerfile and no database schema. The CI workflow does not pretend
-otherwise: it runs only the checks that are meaningful for a repository
-containing no code yet.
+**What the backend does today:** starts, validates its configuration, exposes
+two health endpoints and logs with credential redaction. That is all.
+
+**What it does not do:** no email ingestion, no `.eml` parsing, no phishing
+analysis, no threat intelligence, no risk scoring, no AI agent, no database
+schema or migrations, no authentication. `app/db/session.py` defines an engine
+factory that nothing calls yet.
+
+The CI workflow runs four checks: repository hygiene, backend quality (Ruff
+lint, Ruff format, Pytest with coverage), secret scanning, and Dependabot
+configuration validation. It does not yet run frontend tests, dependency
+vulnerability auditing or container scanning, because those targets do not exist
+yet.
 
 ## Roadmap
 
