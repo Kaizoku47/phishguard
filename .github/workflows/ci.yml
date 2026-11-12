@@ -1,11 +1,10 @@
 # PHISHGUARD continuous integration.
 #
-# Milestone 1 runs only what is meaningful for a repository with no application
-# code yet: repository hygiene, secret scanning and Dependabot configuration
-# validation. Backend tests, frontend tests, linting, type checking, dependency
-# auditing and container scanning are added in the milestones that introduce
-# their targets. A green check here means the checks below ran and passed; it
-# does not mean the project builds.
+# Milestone 2.1.1 runs repository hygiene, backend quality checks, secret
+# scanning and Dependabot configuration validation. Frontend tests, type
+# checking, dependency auditing and container scanning are added when their
+# targets exist. A green check means configured checks passed; it does not mean
+# the complete project builds.
 #
 # Conventions enforced by the hygiene job:
 #   * third-party actions are pinned to a full commit SHA, with the version in a
@@ -220,6 +219,55 @@ jobs:
                   print(f"OK {path}")
           sys.exit(1 if failures else 0)
           PY
+
+  # ---------------------------------------------------------------------------
+  # Backend quality: Python 3.12, Ruff lint + format, and Pytest with coverage.
+  # Runs without PostgreSQL or Redis, and requires no secrets.
+  # ---------------------------------------------------------------------------
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run Ruff lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruff check .
+
+      - name: Run Ruff format check
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruff format --check .
+
+      - name: Run Pytest with coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest --cov=app --cov-report=term-missing
 
   # ---------------------------------------------------------------------------
   # Secret scanning: current tree and full commit history.
