@@ -159,23 +159,36 @@ kebab case for file names in the frontend.
 
 ## 7. Continuous integration
 
-The initial workflow at `.github/workflows/ci.yml` runs only checks that are
-meaningful today:
+The workflow at `.github/workflows/ci.yml` runs these checks:
 
 | Job | What it proves |
 |---|---|
-| `repository-hygiene` | No evidence or secret files are committed; required files exist; production workflows are SHA-pinned and use least-privilege permissions; no workflow uses `pull_request_target` |
+| `repository-hygiene` | No evidence or secret files are committed; required files exist; workflows are SHA-pinned and least privilege; no `pull_request_target` |
+| `backend` | Python 3.12 install, Ruff lint, Ruff format, unit tests, Alembic migration and sequential PostgreSQL integration tests |
 | `secret-scan` | No credential patterns in the current tree or any commit |
-| `dependabot-config` | `.github/dependabot.yml` is valid YAML and only lists ecosystems that have manifests |
+| `dependabot-config` | `.github/dependabot.yml` is valid YAML and only lists ecosystems with manifests |
 
-Backend tests, frontend tests, linting, type checking, dependency auditing and
-container scanning are deliberately absent, because there is no code, manifest
-or Dockerfile to run them against. Each is added in the milestone that introduces
-its target, so a green check always means something.
+The backend job provisions an isolated PostgreSQL 16 service for its integration
+phase. It uses throwaway workflow-local credentials and exposes no repository
+secrets. Unit tests run separately before database tests.
 
-All jobs run with `contents: read` and receive no repository secrets.
+Frontend tests, dependency auditing and container scanning are added when their
+targets exist. All jobs run with `contents: read`.
 
-## 8. Third-party skills and licensing
+## 8. Database development
+
+Database setup, Docker isolation, migrations, readiness, integration tests,
+persistence checks and troubleshooting live in
+[docs/DATABASE.md](DATABASE.md). The local service is always scoped explicitly:
+
+```bash
+docker compose -p phishguard-dev -f docker-compose.yml up -d postgres
+```
+
+The service uses PostgreSQL 16 on `127.0.0.1:5434`, with a dedicated named
+volume and network. It does not use Redis in this milestone.
+
+## 9. Third-party skills and licensing
 
 `.opencode/` contains a working OpenCode and ECC configuration, including skill
 bundles imported from the machine-global ECC installation. The repository is

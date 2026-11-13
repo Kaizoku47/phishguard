@@ -140,7 +140,7 @@ Full detail lives in [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Development status
 
-Milestone 2.1 — backend scaffolding. Present in the repository:
+Milestone 2.2 — database infrastructure. Present in the repository:
 
 | Item | State |
 |---|---|
@@ -155,15 +155,18 @@ Milestone 2.1 — backend scaffolding. Present in the repository:
 | `LICENSE` | Created — MIT |
 | `PHASE2-ARCHITECTURE.md` | Preserved planning record from the previous phase |
 | `.opencode/` | Preserved working OpenCode/ECC configuration |
-| `backend/` | FastAPI skeleton: config, logging, `GET /health`, `GET /api/v1/health`, 31 tests, CI-integrated |
+| `docker-compose.yml` | Created — PHISHGUARD PostgreSQL service on 127.0.0.1:5434 |
+| `docs/DATABASE.md` | Created — database setup, migrations, testing, troubleshooting |
+| `backend/` | FastAPI: config, logging, `GET /health`, `GET /ready`, `GET /api/v1/health`, 79 tests (72 unit + 7 integration), CI-integrated |
 
 **What the backend does today:** starts, validates its configuration, exposes
-two health endpoints and logs with credential redaction. That is all.
+liveness and readiness endpoints, runs SQLAlchemy 2 async against an isolated
+PostgreSQL 16 service, and applies Alembic migrations. Logging redacts
+credentials.
 
 **What it does not do:** no email ingestion, no `.eml` parsing, no phishing
-analysis, no threat intelligence, no risk scoring, no AI agent, no database
-schema or migrations, no authentication. `app/db/session.py` defines an engine
-factory that nothing calls yet.
+analysis, no threat intelligence, no risk scoring, no AI agent, no domain
+tables, and no authentication. The schema is intentionally empty.
 
 The CI workflow runs four checks: repository hygiene, backend quality (Ruff
 lint, Ruff format, Pytest with coverage), secret scanning, and Dependabot
