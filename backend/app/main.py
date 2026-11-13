@@ -20,6 +20,7 @@ from app.api.v1.router import api_v1_router
 from app.core.config import Settings, get_settings
 from app.core.exceptions import PhishGuardError
 from app.core.logging import configure_logging
+from app.db.session import create_engine, create_session_factory, dispose_engine
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +29,20 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup and shutdown hooks.
 
-    No external connection is established in this milestone. Database engine
-    disposal is added with the persistence milestone.
+    The engine is created here without opening a connection, so an unavailable
+    database never blocks startup. Connection attempts happen on first use.
     """
-    logger.info("service starting: %s", app.state.settings.service_name)
-    yield
-    logger.info("service stopping: %s", app.state.settings.service_name)
+    settings = app.state.settings
+    engine = create_engine(settings)
+    app.state.engine = engine
+    app.state.session_factory = create_session_factory(engine)
+
+    logger.info("service starting: %s", settings.service_name)
+    try:
+        yield
+    finally:
+        await dispose_engine(engine)
+        logger.info("service stopping: %s", settings.service_name)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

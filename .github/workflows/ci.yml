@@ -221,16 +221,48 @@ jobs:
           PY
 
   # ---------------------------------------------------------------------------
-  # Backend quality: Python 3.12, Ruff lint + format, and Pytest with coverage.
-  # Runs without PostgreSQL or Redis, and requires no secrets.
+  # Backend quality: Python 3.12, Ruff lint + format, unit tests, and
+  # PostgreSQL integration tests against a service container.
+  #
+  # Unit tests run first and need no database. Integration tests then run
+  # sequentially against an isolated postgres:16 service container on the
+  # runner, never a development database. No repository secret is used: the
+  # credentials below are throwaway values scoped to this job.
   # ---------------------------------------------------------------------------
   backend:
     name: Backend
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: phishguard
+          POSTGRES_PASSWORD: ci-only-not-a-real-credential
+          POSTGRES_DB: phishguard
+        ports:
+          - "127.0.0.1:5434:5432"
+        options: >-
+          --health-cmd "pg_isready -U phishguard -d phishguard"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PHISHGUARD_SECRET_KEY: ci-only-not-a-real-credential-0123456789
+      PHISHGUARD_ENVIRONMENT: test
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5434"
+      POSTGRES_DB: phishguard
+      POSTGRES_USER: phishguard
+      POSTGRES_PASSWORD: ci-only-not-a-real-credential
+      DATABASE_URL: postgresql+asyncpg://phishguard:ci-only-not-a-real-credential@127.0.0.1:5434/phishguard
+      DATABASE_URL_SYNC: postgresql+psycopg://phishguard:ci-only-not-a-real-credential@127.0.0.1:5434/phishguard
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://phishguard:ci-only-not-a-real-credential@127.0.0.1:5434/phishguard
+      POSTGRES_TEST_DB: phishguard_test
+      DATABASE_URL_TEST: postgresql+asyncpg://phishguard:ci-only-not-a-real-credential@127.0.0.1:5434/phishguard_test
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -249,7 +281,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[dev,postgres]"
 
       - name: Run Ruff lint
         shell: bash
@@ -263,11 +295,46 @@ jobs:
           set -euo pipefail
           ruff format --check .
 
-      - name: Run Pytest with coverage
+      - name: Run unit tests (no database)
         shell: bash
         run: |
           set -euo pipefail
-          python -m pytest --cov=app --cov-report=term-missing
+          python -m pytest -m "not integration"
+
+      - name: Apply migrations to the CI database
+        shell: bash
+        run: |
+          set -euo pipefail
+          alembic upgrade head
+
+      - name: Create the integration test database
+        shell: bash
+        run: |
+          set -euo pipefail
+          PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -p 5434 -U phishguard -d phishguard \
+            -tc "SELECT 1 FROM pg_database WHERE datname='phishguard_test'" \
+            | grep -q 1 || PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -p 5434 -U phishguard -d phishguard \
+            -c "CREATE DATABASE phishguard_test"
+
+      - name: Run integration tests (sequential)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest -m integration -p no:randomly
+
+      - name: Audit dependencies for known vulnerabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Freeze the exact installed environment, including pip and any
+          # other packaging tools present. The editable local project is
+          # excluded because it is not published on PyPI and cannot be audited.
+          # Every remaining line is fully pinned with ==.
+          python -m pip freeze --all --exclude-editable > /tmp/phishguard-requirements.txt
+          # The freeze contains the complete transitive closure, so --no-deps
+          # prevents re-resolution and audits exactly what CI installed.
+          # --strict turns collection failures into a non-zero exit.
+          pip-audit --requirement /tmp/phishguard-requirements.txt --no-deps --strict --progress-spinner off
 
   # ---------------------------------------------------------------------------
   # Secret scanning: current tree and full commit history.

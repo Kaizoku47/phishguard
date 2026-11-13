@@ -112,6 +112,10 @@ data/uploads/
 *.sqlite3
 *.sql.gz
 *.dump
+# Plain SQL dumps contain real data and are produced by the backup procedure
+# in docs/DATABASE.md. They must never be committed.
+*.sql
+!alembic/**/*.sql
 *.dmp
 pgdata/
 postgres-data/
