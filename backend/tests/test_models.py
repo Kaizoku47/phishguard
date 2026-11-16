@@ -179,6 +179,19 @@ def test_email_attachments_columns() -> None:
     assert "CHAR" in str(columns["sha256"].type).upper()
 
 
+def test_attachment_size_is_a_bigint() -> None:
+    """Revision 5.2.1 §6.4: ``size_bytes`` is ``BIGINT``, not ``INTEGER``.
+
+    A 32-bit integer would overflow on a large attachment, so the type is
+    asserted explicitly rather than left implicit.
+    """
+    from sqlalchemy import BigInteger
+
+    column = EmailAttachment.__table__.columns["size_bytes"]
+    assert isinstance(column.type, BigInteger), str(column.type)
+    assert column.nullable is True
+
+
 def test_audit_events_columns() -> None:
     columns = AuditEvent.__table__.columns
     assert set(columns.keys()) == {

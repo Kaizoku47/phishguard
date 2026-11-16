@@ -130,7 +130,7 @@ def upgrade() -> None:
         sa.Column("detected_content_type", sa.Text(), nullable=True),
         sa.Column("content_disposition", sa.Text(), nullable=True),
         sa.Column("content_transfer_encoding", sa.Text(), nullable=True),
-        sa.Column("size_bytes", sa.Integer(), nullable=True),
+        sa.Column("size_bytes", sa.BigInteger(), nullable=True),
         sa.Column("sha256", sa.CHAR(length=64), nullable=True),
         sa.Column("decode_ok", sa.Boolean(), nullable=False),
         sa.CheckConstraint(

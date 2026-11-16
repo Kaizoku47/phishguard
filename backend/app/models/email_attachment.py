@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     CHAR,
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -89,7 +90,7 @@ class EmailAttachment(Base):
     detected_content_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_disposition: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_transfer_encoding: Mapped[str | None] = mapped_column(Text, nullable=True)
-    size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     # Null when the decoded bytes could not be established reliably.
     sha256: Mapped[str | None] = mapped_column(CHAR(64), nullable=True)
     decode_ok: Mapped[bool] = mapped_column(Boolean, nullable=False)

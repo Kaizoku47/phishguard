@@ -161,6 +161,33 @@ async def test_a_tombstone_must_carry_its_timestamp(db: AsyncEngine) -> None:
     assert tombstoned is not None
 
 
+async def test_the_attachment_size_column_is_a_bigint(db: AsyncEngine) -> None:
+    """Revision 5.2.1 §6.4 requires ``size_bytes BIGINT``.
+
+    The model declares it, but only PostgreSQL can confirm what was really
+    created.
+    """
+    async with db.connect() as connection:
+        data_type = await connection.scalar(
+            text(
+                "select data_type from information_schema.columns "
+                "where table_schema = 'public' "
+                "and table_name = 'email_attachments' "
+                "and column_name = 'size_bytes'"
+            )
+        )
+        is_nullable = await connection.scalar(
+            text(
+                "select is_nullable from information_schema.columns "
+                "where table_schema = 'public' "
+                "and table_name = 'email_attachments' "
+                "and column_name = 'size_bytes'"
+            )
+        )
+    assert data_type == "bigint"
+    assert is_nullable == "YES"
+
+
 async def test_the_digest_must_be_present(db: AsyncEngine) -> None:
     with pytest.raises(DBAPIError):
         await _new_evidence(db, sha256=None)
@@ -391,6 +418,47 @@ async def test_an_audit_event_survives_the_deletion_of_its_subject(db: AsyncEngi
             text("select email_evidence_id from audit_events where event_type = 'uploaded'")
         )
     assert linked == evidence_id
+
+
+async def test_a_physical_deletion_nulls_the_audit_link(db: AsyncEngine) -> None:
+    """The real ``ON DELETE SET NULL`` action, exercised by PostgreSQL.
+
+    The tombstone test above only sets ``status='deleted'``; the row stays.
+    This test deletes the evidence row for real, so the database must apply
+    the foreign key's ``ON DELETE SET NULL`` and keep the audit event with a
+    null link.
+    """
+    evidence_id = await _new_evidence(db, sha256=_digest("m"))
+    async with db.begin() as connection:
+        await connection.execute(
+            AuditEvent.__table__.insert().values(
+                event_type="uploaded",
+                email_evidence_id=evidence_id,
+                detail={"size_bytes": 1024},
+                actor="local",
+            )
+        )
+
+    # The evidence row is physically removed. The audit event must survive.
+    async with db.begin() as connection:
+        await connection.execute(
+            EmailEvidence.__table__.delete().where(EmailEvidence.__table__.c.id == evidence_id)
+        )
+
+    async with db.connect() as connection:
+        row = (
+            await connection.execute(
+                text(
+                    "select event_type, email_evidence_id from audit_events "
+                    "where event_type = 'uploaded'"
+                )
+            )
+        ).one()
+
+    # The audit event still exists ...
+    assert row.event_type == "uploaded"
+    # ... and its link to the deleted evidence is null, not dangling.
+    assert row.email_evidence_id is None
 
 
 async def test_an_audit_event_may_exist_without_an_evidence_row(db: AsyncEngine) -> None:
