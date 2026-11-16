@@ -316,6 +316,17 @@ jobs:
             | grep -q 1 || PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -p 5434 -U phishguard -d phishguard \
             -c "CREATE DATABASE phishguard_test"
 
+      - name: Apply migrations to the integration test database
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The integration tests run against phishguard_test, which is a
+          # different database from the one migrated above. It needs the
+          # schema as well, otherwise the tests depend on another test
+          # migrating it first.
+          ALEMBIC_DATABASE_URL="postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_TEST_DB}" \
+            alembic upgrade head
+
       - name: Run integration tests (sequential)
         shell: bash
         run: |

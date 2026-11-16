@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -32,7 +33,6 @@ from sqlalchemy.ext.asyncio import create_async_engine
 pytestmark = pytest.mark.integration
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
-ALEMBIC_BIN = BACKEND_ROOT / ".venv" / "bin" / "alembic"
 
 EXPECTED_TABLES = {
     "email_evidence",
@@ -60,8 +60,11 @@ def _alembic_env() -> dict[str, str]:
 
 def _run_alembic(*args: str) -> tuple[int, str]:
     """Run Alembic as a subprocess and return its exit code and output."""
-    result = subprocess.run(  # noqa: S603 - static binary and static args
-        [str(ALEMBIC_BIN), *args],
+    # ``sys.executable`` resolves to whatever interpreter runs the tests, so
+    # the same call works in a local virtualenv and in CI, where no
+    # ``.venv`` directory exists.
+    result = subprocess.run(  # noqa: S603 - static interpreter and static args
+        [sys.executable, "-m", "alembic", *args],
         cwd=BACKEND_ROOT,
         capture_output=True,
         text=True,
