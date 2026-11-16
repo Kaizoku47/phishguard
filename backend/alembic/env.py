@@ -12,7 +12,12 @@ from logging.config import fileConfig
 
 from alembic import context
 from app.core.config import get_settings
-from app.models.base import Base
+
+# Import the model *package*, not the base module. Importing the package
+# registers every domain model on Base.metadata, which is what makes
+# --autogenerate see the full schema. Importing app.models.base alone would
+# produce an empty migration.
+from app.models import Base  # noqa: F401  # registers every model
 from sqlalchemy import engine_from_config, pool
 
 config = context.config
@@ -22,8 +27,7 @@ if config.config_file_name is not None:
 
 logger = logging.getLogger("alembic.env")
 
-# Target metadata for --autogenerate. Empty today: this milestone defines no
-# domain tables. Future models imported into Base.metadata are detected here.
+# Target metadata for --autogenerate. The domain models are registered above.
 target_metadata = Base.metadata
 
 
