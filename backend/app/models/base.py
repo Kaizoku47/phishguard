@@ -1,13 +1,13 @@
 """SQLAlchemy 2.0 declarative base and naming conventions.
 
-This module defines the single shared metadata for PHISHGUARD. It deliberately
-contains no domain tables: email analysis, phishing evidence, threat
-intelligence, risk scoring, investigation jobs and AI agent tables all belong
-to later milestones. Adding them here would create speculative schema.
+This module defines the single shared metadata for PHISHGUARD. It holds no
+domain tables itself: the tables live in the sibling modules, and importing
+the ``app.models`` package registers them all on ``Base.metadata``.
 
-Naming conventions are applied here so every table, constraint and index
-created in the future follows one rule set, which makes migration history
-readable and lets Alembic generate consistent names.
+Naming conventions are applied here so every table, unique constraint, check
+constraint, index and foreign key created from this metadata follows one rule
+set, which keeps migration history readable and lets Alembic generate
+consistent names.
 """
 
 from __future__ import annotations
