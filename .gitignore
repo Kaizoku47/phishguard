@@ -96,7 +96,7 @@ test-results/
 # Raw emails, their attachments and anything extracted from them are sensitive
 # by definition. Only synthetic, sanitised fixtures may be committed, and only
 # under a tests/ directory, where the negation below re-allows them.
-evidence/
+/evidence/
 uploads/
 data/uploads/
 *.eml
