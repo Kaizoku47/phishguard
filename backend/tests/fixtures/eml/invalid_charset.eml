@@ -1,0 +1,5 @@
+From: Alice <alice@example.com>
+Subject: Bad charset
+Content-Type: text/plain; charset="no-such-codec"
+
+café and résumé

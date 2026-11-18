@@ -1,0 +1,19 @@
+From: Alice <alice@example.com>
+To: Bob <bob@example.com>
+Subject: Forwarded
+Content-Type: multipart/mixed; boundary="FWD"
+
+--FWD
+Content-Type: text/plain; charset=utf-8
+
+Forwarded below.
+--FWD
+Content-Type: message/rfc822
+Content-Disposition: attachment; filename="original.eml"
+
+From: Attacker <a@evil.example>
+Subject: Inner subject
+Content-Type: text/plain
+
+Inner body with http://inner.example.net/secret
+--FWD--

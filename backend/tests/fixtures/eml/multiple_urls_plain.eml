@@ -1,0 +1,6 @@
+From: Alice <alice@example.com>
+Subject: Links
+Content-Type: text/plain
+
+Visit https://Example.COM:8443/path?q=1 and www.Sample.NET/page.
+Also http://second.example.org/a, then mailto:nobody@example.com is not scheme://.

@@ -1,0 +1,9 @@
+From: attacker <attacker@fake.example>
+Authentication-Results: mx.example.com; spf=pass smtp.mailfrom=paypal.com; dkim=pass header.d=paypal.com; dmarc=pass
+Received: from trusted.example by mx.example.com
+DKIM-Signature: v=1; a=rsa-sha256; d=paypal.com
+ARC-Authentication-Results: i=1; mx.example.com; dmarc=pass
+Subject: Invoice
+Content-Type: text/plain
+
+Please review.

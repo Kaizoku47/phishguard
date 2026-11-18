@@ -1,0 +1,11 @@
+From: Alice <alice@example.com>
+Subject: Misleading
+Content-Type: multipart/mixed; boundary="MIS"
+
+--MIS
+Content-Type: application/pdf; name="invoice.pdf"
+Content-Disposition: attachment; filename="invoice.pdf"
+Content-Transfer-Encoding: base64
+
+iVBORw0KGgoAAAANSUhEUg==
+--MIS--

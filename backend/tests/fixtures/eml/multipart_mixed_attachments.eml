@@ -1,0 +1,16 @@
+From: Alice <alice@example.com>
+To: Bob <bob@example.com>
+Subject: Mixed
+Content-Type: multipart/mixed; boundary="MIX"
+
+--MIX
+Content-Type: text/plain; charset=utf-8
+
+See attached.
+--MIX
+Content-Type: application/pdf; name="report.pdf"
+Content-Disposition: attachment; filename="report.pdf"
+Content-Transfer-Encoding: base64
+
+JVBERi0xLjQK
+--MIX--

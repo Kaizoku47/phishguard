@@ -10,14 +10,82 @@ traceback cannot print their contents.
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import urlparse
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.services.email.limits import ParserLimits
+
 Environment = Literal["development", "test", "staging", "production"]
+
+
+def default_evidence_root() -> Path:
+    """The default evidence root.
+
+    ``XDG_DATA_HOME`` is honoured when it is set, as the XDG base directory
+    specification requires. Otherwise the default is
+    ``~/.local/share/phishguard/evidence``.
+
+    The root lives outside the Git repository on purpose: ``.gitignore``
+    covers ``evidence/`` and ``uploads/`` but not ``data/``, and a default
+    inside the working tree would put evidence bytes into a directory that is
+    easy to commit by accident.
+    """
+    xdg_data_home = os.environ.get("XDG_DATA_HOME")
+    if xdg_data_home:
+        return Path(xdg_data_home) / "phishguard" / "evidence"
+    return Path.home() / ".local" / "share" / "phishguard" / "evidence"
+
+
+def _project_root() -> Path:
+    """The PHISHGUARD project tree, used to refuse an evidence root inside it.
+
+    The repository root is located by walking up from this file until a
+    directory holding a ``.git`` entry is found. When the package is
+    installed outside a checkout the nearest parent is used instead, which is
+    still the right answer for the "inside the project tree" rule.
+    """
+    here = Path(__file__).resolve()
+    for candidate in here.parents:
+        if (candidate / ".git").exists():
+            return candidate
+    return here.parents[2]
+
+
+def validate_evidence_root(root: Path) -> Path:
+    """Refuse an evidence root that is dangerous.
+
+    Three roots are refused, because each one would put untrusted email bytes
+    somewhere they do not belong: the filesystem root, a home directory
+    itself, and anything inside the PHISHGUARD project tree.
+
+    The comparison uses resolved paths, so a symlink cannot disguise a
+    dangerous root. An unsafe root is never silently relocated: the process
+    fails to start and the operator fixes the configuration.
+    """
+    resolved = root.expanduser().resolve()
+
+    if resolved == Path(resolved.anchor):
+        raise ValueError("PHISHGUARD_EVIDENCE_ROOT must not be the filesystem root")
+
+    try:
+        home = Path.home().resolve()
+    except (RuntimeError, OSError):  # pragma: no cover - no home directory
+        home = None
+    if home is not None and resolved == home:
+        raise ValueError("PHISHGUARD_EVIDENCE_ROOT must not be the home directory")
+
+    project = _project_root().resolve()
+    if resolved == project or resolved.is_relative_to(project):
+        raise ValueError("PHISHGUARD_EVIDENCE_ROOT must not be inside the PHISHGUARD project tree")
+
+    return resolved
+
 
 # Placeholder used by .env.example. Rejected so a copied template cannot run.
 # Every placeholder the templates actually ship must appear here, otherwise
@@ -68,6 +136,65 @@ class Settings(BaseSettings):
     max_upload_bytes: Annotated[int, Field(gt=0, le=100 * 1024 * 1024)] = Field(
         default=10 * 1024 * 1024, validation_alias="PHISHGUARD_MAX_UPLOAD_BYTES"
     )
+
+    # -- Email parser limits -------------------------------------------------
+    # These mirror app.services.email.limits. Depth and part count bound
+    # extraction, not construction of the MIME tree. The deadline is a monitor
+    # and never terminates a synchronous parse.
+    max_mime_depth: Annotated[int, Field(ge=1, le=100)] = Field(
+        default=10, validation_alias="PHISHGUARD_MAX_MIME_DEPTH"
+    )
+    max_mime_parts: Annotated[int, Field(ge=1, le=10000)] = Field(
+        default=500, validation_alias="PHISHGUARD_MAX_MIME_PARTS"
+    )
+    max_header_count: Annotated[int, Field(ge=1, le=10000)] = Field(
+        default=200, validation_alias="PHISHGUARD_MAX_HEADER_COUNT"
+    )
+    max_header_length: Annotated[int, Field(ge=1, le=1024 * 1024)] = Field(
+        default=16 * 1024, validation_alias="PHISHGUARD_MAX_HEADER_LENGTH"
+    )
+    max_decoded_body_bytes: Annotated[int, Field(gt=0, le=100 * 1024 * 1024)] = Field(
+        default=10 * 1024 * 1024, validation_alias="PHISHGUARD_MAX_DECODED_BODY_BYTES"
+    )
+    max_concurrent_uploads: Annotated[int, Field(ge=1, le=64)] = Field(
+        default=4, validation_alias="PHISHGUARD_MAX_CONCURRENT_UPLOADS"
+    )
+    parser_deadline_seconds: Annotated[int, Field(ge=1, le=3600)] = Field(
+        default=30, validation_alias="PHISHGUARD_PARSER_DEADLINE_SECONDS"
+    )
+
+    def to_parser_limits(self) -> ParserLimits:
+        """Build :class:`ParserLimits` from these validated settings.
+
+        ``max_concurrent_uploads`` is ingestion concurrency control and is
+        deliberately not copied here. ``magic_sniff_bytes`` keeps its constant.
+        The parser itself does not import Settings; the ingestion service in
+        Milestone 2.3.4 will call this at the boundary.
+        """
+        return ParserLimits(
+            max_upload_bytes=self.max_upload_bytes,
+            max_mime_depth=self.max_mime_depth,
+            max_mime_parts=self.max_mime_parts,
+            max_header_count=self.max_header_count,
+            max_header_length=self.max_header_length,
+            max_decoded_body_bytes=self.max_decoded_body_bytes,
+            deadline_seconds=self.parser_deadline_seconds,
+        )
+
+    # -- Evidence storage ---------------------------------------------------
+    # Where uploaded messages are stored. The root is outside the Git
+    # repository and outside any served directory. Startup refuses "/" , a home
+    # directory and anything inside the project tree.
+    evidence_root: Path = Field(
+        default_factory=default_evidence_root,
+        validation_alias="PHISHGUARD_EVIDENCE_ROOT",
+        description="Filesystem root for stored evidence. Never inside the project tree.",
+    )
+
+    @field_validator("evidence_root")
+    @classmethod
+    def _reject_dangerous_evidence_root(cls, value: Path) -> Path:
+        return validate_evidence_root(value)
 
     # -- Database -----------------------------------------------------------
     # Defaults mirror .env.example so a misconfigured deployment surfaces as a

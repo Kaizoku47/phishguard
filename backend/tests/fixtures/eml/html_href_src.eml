@@ -1,0 +1,9 @@
+From: Alice <alice@example.com>
+Subject: HTML links
+Content-Type: text/html
+
+<html><body>
+<a href='https://A.Example.com:443/x'>one</a>
+<img src="https://b.example.net/y.png">
+<script src="http://c.example.org/z.js"></script>
+</body></html>

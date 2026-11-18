@@ -46,14 +46,27 @@ async def integration_engine() -> AsyncIterator[AsyncEngine]:
 
 @pytest_asyncio.fixture
 async def clean_tables(integration_engine: AsyncEngine) -> AsyncIterator[None]:
-    """Provide an isolated schema state per test once domain tables exist.
+    """Give each test an empty schema.
 
-    No domain tables exist in this milestone, so this fixture currently only
-    verifies connectivity; it will be extended to truncate tables when the
-    first table lands.
+    The Milestone 2.3.1 tables are truncated in one statement, children
+    first, so a truncate never has to follow a dependency chain.
+
+    The target is validated before anything is touched: the fixture refuses
+    to run against anything other than the PHISHGUARD test database.
     """
+    settings = get_settings()
+    try:
+        validate_test_target(settings.database_url_test)
+    except UnsafeTargetError as exc:
+        raise RuntimeError(f"refusing to truncate an unvalidated target: {exc}") from exc
+
     async with integration_engine.begin() as connection:
-        await connection.execute(text("SELECT 1"))
+        await connection.execute(
+            text(
+                "TRUNCATE email_attachments, parsed_emails, analysis_results, "
+                "audit_events, email_evidence CASCADE"
+            )
+        )
     yield
 
 

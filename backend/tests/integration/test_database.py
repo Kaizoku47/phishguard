@@ -125,9 +125,15 @@ async def test_alembic_migration_runs_and_records_version(
     assert settings.postgres_password.get_secret_value() not in upgrade.stdout
     assert settings.postgres_password.get_secret_value() not in upgrade.stderr
 
+    # The expected revision is the current head, read from Alembic itself, so
+    # this test does not have to be edited every time a migration is added.
+    heads = await asyncio.to_thread(_run, "heads")
+    assert heads.returncode == 0, heads.stderr
+    head = heads.stdout.strip().split()[0]
+
     current = await asyncio.to_thread(_run, "current")
     assert current.returncode == 0
-    assert "0001_baseline" in current.stdout, current.stdout
+    assert head in current.stdout, current.stdout
 
     # The alembic_version table now exists in the test database.
     from sqlalchemy.ext.asyncio import create_async_engine
@@ -138,7 +144,7 @@ async def test_alembic_migration_runs_and_records_version(
             version = (
                 await connection.execute(text("SELECT version_num FROM alembic_version"))
             ).scalar()
-            assert version == "0001_baseline"
+            assert version == head
     finally:
         await engine.dispose()
 

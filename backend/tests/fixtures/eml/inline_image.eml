@@ -1,0 +1,17 @@
+From: Alice <alice@example.com>
+To: Bob <bob@example.com>
+Subject: Inline
+Content-Type: multipart/related; boundary="REL"
+
+--REL
+Content-Type: text/html; charset=utf-8
+
+<html><img src="cid:pic@example.com"></html>
+--REL
+Content-Type: image/png; name="pic.png"
+Content-Disposition: inline; filename="pic.png"
+Content-ID: <pic@example.com>
+Content-Transfer-Encoding: base64
+
+iVBORw0KGgoAAAANSUhEUg==
+--REL--

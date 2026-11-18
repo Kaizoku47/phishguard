@@ -1,0 +1,11 @@
+From: Alice <alice@example.com>
+Subject: Bad CTE
+Content-Type: multipart/mixed; boundary="CTE"
+
+--CTE
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="blob.bin"
+Content-Transfer-Encoding: x-super-secret-encoding
+
+YWJj
+--CTE--
