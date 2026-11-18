@@ -8,7 +8,9 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.config import Settings, get_settings
+from app.core.auth import bearer_token, token_is_valid
+from app.core.config import Settings
+from app.core.exceptions import AuthenticationRequiredError
 
 
 def get_session_factory(request: Request) -> async_sessionmaker[AsyncSession]:
@@ -16,7 +18,12 @@ def get_session_factory(request: Request) -> async_sessionmaker[AsyncSession]:
     return request.app.state.session_factory
 
 
-SettingsDep = Annotated[Settings, Depends(get_settings)]
+def get_request_settings(request: Request) -> Settings:
+    """Return the settings bound to this application instance."""
+    return request.app.state.settings
+
+
+SettingsDep = Annotated[Settings, Depends(get_request_settings)]
 SessionFactoryDep = Annotated[async_sessionmaker[AsyncSession], Depends(get_session_factory)]
 
 
@@ -33,3 +40,21 @@ async def provide_session(
 
 
 SessionDep = Annotated[AsyncSession, Depends(provide_session)]
+
+
+async def require_bearer_token(request: Request, settings: SettingsDep) -> None:
+    """Require a valid bearer token for A4-A9.
+
+    A token in the query string is rejected as authentication failure; the
+    credential is accepted only from the Authorization header.
+    """
+    token_keys = {"token", "access_token", "api_token"}
+    if any(key in request.query_params for key in token_keys):
+        raise AuthenticationRequiredError
+
+    presented = bearer_token(request.headers.get("authorization"))
+    if not token_is_valid(presented, settings):
+        raise AuthenticationRequiredError
+
+
+AuthDep = Annotated[None, Depends(require_bearer_token)]
