@@ -1,0 +1,9 @@
+From: Alice <alice@example.com>
+To: One <one@example.com>
+To: Two <two@example.com>
+X-Custom: first
+X-Custom: second
+Subject: Repeats
+Content-Type: text/plain
+
+body

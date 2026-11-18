@@ -1,0 +1,8 @@
+From: Alice <alice@example.com>
+Subject: Broken boundary
+Content-Type: multipart/mixed; boundary="BROKEN"
+
+--BROKEN
+Content-Type: text/plain
+
+missing closing boundary

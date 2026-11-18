@@ -19,6 +19,8 @@ from urllib.parse import urlparse
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.services.email.limits import ParserLimits
+
 Environment = Literal["development", "test", "staging", "production"]
 
 
@@ -134,6 +136,50 @@ class Settings(BaseSettings):
     max_upload_bytes: Annotated[int, Field(gt=0, le=100 * 1024 * 1024)] = Field(
         default=10 * 1024 * 1024, validation_alias="PHISHGUARD_MAX_UPLOAD_BYTES"
     )
+
+    # -- Email parser limits -------------------------------------------------
+    # These mirror app.services.email.limits. Depth and part count bound
+    # extraction, not construction of the MIME tree. The deadline is a monitor
+    # and never terminates a synchronous parse.
+    max_mime_depth: Annotated[int, Field(ge=1, le=100)] = Field(
+        default=10, validation_alias="PHISHGUARD_MAX_MIME_DEPTH"
+    )
+    max_mime_parts: Annotated[int, Field(ge=1, le=10000)] = Field(
+        default=500, validation_alias="PHISHGUARD_MAX_MIME_PARTS"
+    )
+    max_header_count: Annotated[int, Field(ge=1, le=10000)] = Field(
+        default=200, validation_alias="PHISHGUARD_MAX_HEADER_COUNT"
+    )
+    max_header_length: Annotated[int, Field(ge=1, le=1024 * 1024)] = Field(
+        default=16 * 1024, validation_alias="PHISHGUARD_MAX_HEADER_LENGTH"
+    )
+    max_decoded_body_bytes: Annotated[int, Field(gt=0, le=100 * 1024 * 1024)] = Field(
+        default=10 * 1024 * 1024, validation_alias="PHISHGUARD_MAX_DECODED_BODY_BYTES"
+    )
+    max_concurrent_uploads: Annotated[int, Field(ge=1, le=64)] = Field(
+        default=4, validation_alias="PHISHGUARD_MAX_CONCURRENT_UPLOADS"
+    )
+    parser_deadline_seconds: Annotated[int, Field(ge=1, le=3600)] = Field(
+        default=30, validation_alias="PHISHGUARD_PARSER_DEADLINE_SECONDS"
+    )
+
+    def to_parser_limits(self) -> ParserLimits:
+        """Build :class:`ParserLimits` from these validated settings.
+
+        ``max_concurrent_uploads`` is ingestion concurrency control and is
+        deliberately not copied here. ``magic_sniff_bytes`` keeps its constant.
+        The parser itself does not import Settings; the ingestion service in
+        Milestone 2.3.4 will call this at the boundary.
+        """
+        return ParserLimits(
+            max_upload_bytes=self.max_upload_bytes,
+            max_mime_depth=self.max_mime_depth,
+            max_mime_parts=self.max_mime_parts,
+            max_header_count=self.max_header_count,
+            max_header_length=self.max_header_length,
+            max_decoded_body_bytes=self.max_decoded_body_bytes,
+            deadline_seconds=self.parser_deadline_seconds,
+        )
 
     # -- Evidence storage ---------------------------------------------------
     # Where uploaded messages are stored. The root is outside the Git

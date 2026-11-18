@@ -1,0 +1,11 @@
+From: Alice <alice@example.com>
+Subject: Bad QP
+Content-Type: multipart/mixed; boundary="QP"
+
+--QP
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="bad.txt"
+Content-Transfer-Encoding: quoted-printable
+
+invalid =ZZ escape here
+--QP--

@@ -1,0 +1,6 @@
+From: Alice <alice@example.com>
+To: Bob <bob@example.com>
+Subject: HTML message
+Content-Type: text/html; charset=utf-8
+
+<html><body><a href="https://example.com/a">A</a><img src="https://img.example.net/i.png"></body></html>

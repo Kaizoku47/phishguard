@@ -1,0 +1,11 @@
+From: Alice <alice@example.com>
+Subject: Bad base64
+Content-Type: multipart/mixed; boundary="B64"
+
+--B64
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="bad.bin"
+Content-Transfer-Encoding: base64
+
+YWJj!!!not-base64
+--B64--
