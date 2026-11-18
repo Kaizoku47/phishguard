@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.services.analysis.intel import IntelligenceResult
 from app.services.analysis.score import (
     ENGINE_VERSION,
     SIGNAL_WEIGHTS,
@@ -26,6 +27,7 @@ __all__ = [
     "BRAND_DOMAINS",
     "ENGINE_VERSION",
     "FREE_MAIL_DOMAINS",
+    "IntelligenceResult",
     "SIGNAL_WEIGHTS",
     "SUSPICIOUS_TLDS",
     "ScoreResult",
