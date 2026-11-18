@@ -1,0 +1,39 @@
+# Synthetic OTX test fixtures in the original Milestone 2.3.6 commit.
+# Each fingerprint below is an exact, commit-specific match for a low-risk
+# test-only value replaced by "test-otx-key" in the current tree.
+# History rewriting is out of scope for this remediation.
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:173
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:181
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:207
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:223
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:235
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:246
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:257
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:267
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:279
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:294
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:336
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:374
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:384
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:395
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:415
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:428
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:440
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:449
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:469
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:491
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:509
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:523
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:544
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:560
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:579
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:588
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:615
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:626
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:692
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:721
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:788
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:804
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:827
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:845
+16c5a91d6ec19c4b8b9358a20159ec6c9773bdb9:backend/tests/test_intel.py:generic-api-key:902
