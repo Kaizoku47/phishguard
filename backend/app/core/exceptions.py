@@ -18,3 +18,27 @@ class ConfigurationError(PhishGuardError):
 
 class NotFoundError(PhishGuardError):
     """A requested resource does not exist."""
+
+
+class AuthenticationRequiredError(PhishGuardError):
+    """No valid bearer token was supplied."""
+
+
+class PayloadTooLargeError(PhishGuardError):
+    """The uploaded message exceeds the configured byte cap."""
+
+
+class UnsupportedMediaTypeError(PhishGuardError):
+    """The request content type is not message/rfc822."""
+
+
+class EmptyPayloadError(PhishGuardError):
+    """The upload contained no bytes."""
+
+
+class EvidenceStorageError(PhishGuardError):
+    """Evidence could not be published, read or removed safely."""
+
+
+class ParsingNotCompleteError(PhishGuardError):
+    """Parsed data was requested before parsing completed."""

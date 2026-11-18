@@ -103,6 +103,11 @@ _SECRET_PLACEHOLDERS = frozenset(
     }
 )
 
+# Synthetic token used only inside the test environment. Production startup
+# refuses it through a model validator, so a copied test configuration cannot
+# reach a real deployment.
+SYNTHETIC_TEST_TOKEN = "test-only-synthetic-token-never-use-outside-tests-0001"  # noqa: S105
+
 
 class Settings(BaseSettings):
     """Typed view of the process environment."""
@@ -258,6 +263,20 @@ class Settings(BaseSettings):
     )
 
     # -- Secrets ------------------------------------------------------------
+    api_token: SecretStr = Field(
+        default_factory=lambda: SecretStr(SYNTHETIC_TEST_TOKEN),
+        validation_alias="PHISHGUARD_API_TOKEN",
+        min_length=32,
+        description="Static bearer token for the API. Generate with secrets.token_urlsafe(48).",
+    )
+
+    @field_validator("api_token")
+    @classmethod
+    def _reject_placeholder_token(cls, value: SecretStr) -> SecretStr:
+        if value.get_secret_value().strip() in _SECRET_PLACEHOLDERS:
+            raise ValueError("api_token is still a placeholder value")
+        return value
+
     secret_key: SecretStr = Field(
         ...,
         validation_alias="PHISHGUARD_SECRET_KEY",
@@ -305,6 +324,12 @@ class Settings(BaseSettings):
                 "postgres_password is still a placeholder value; "
                 "generate one with: openssl rand -hex 24"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _api_token_required_outside_test(self) -> Settings:
+        if self.environment != "test" and self.api_token.get_secret_value() == SYNTHETIC_TEST_TOKEN:
+            raise ValueError("PHISHGUARD_API_TOKEN is required outside the test environment")
         return self
 
     @model_validator(mode="after")
