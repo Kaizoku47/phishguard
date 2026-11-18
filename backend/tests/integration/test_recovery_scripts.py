@@ -19,6 +19,8 @@ from app.models import EmailEvidence
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+pytestmark = pytest.mark.integration
+
 SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "check_evidence.py"
 _spec = importlib.util.spec_from_file_location("check_evidence_under_test", SCRIPT_PATH)
 assert _spec is not None and _spec.loader is not None

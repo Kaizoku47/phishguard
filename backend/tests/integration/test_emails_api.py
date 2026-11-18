@@ -27,6 +27,8 @@ from pydantic import SecretStr
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+pytestmark = pytest.mark.integration
+
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "eml"
 
 
