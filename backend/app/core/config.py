@@ -186,6 +186,34 @@ class Settings(BaseSettings):
             deadline_seconds=self.parser_deadline_seconds,
         )
 
+    # -- Threat intelligence (LevelBlue OTX) --------------------------------
+    # Optional: without a key, lookups are skipped and recorded as missing.
+    otx_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias="PHISHGUARD_OTX_API_KEY",
+        description="Optional OTX API key. Never logged or placed in a URL.",
+    )
+    intel_timeout_seconds: Annotated[int, Field(ge=1, le=60)] = Field(
+        default=10, validation_alias="PHISHGUARD_INTEL_TIMEOUT_SECONDS"
+    )
+    intel_max_response_bytes: Annotated[int, Field(ge=1024, le=10 * 1024 * 1024)] = Field(
+        default=1024 * 1024, validation_alias="PHISHGUARD_INTEL_MAX_RESPONSE_BYTES"
+    )
+
+    @field_validator("otx_api_key")
+    @classmethod
+    def _validate_otx_api_key(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is None:
+            return None
+        token = value.get_secret_value().strip()
+        if not token:
+            return None
+        if token in _SECRET_PLACEHOLDERS:
+            raise ValueError("otx_api_key is still a placeholder value")
+        if "\r" in token or "\n" in token:
+            raise ValueError("otx_api_key must not contain line breaks")
+        return SecretStr(token)
+
     # -- Evidence storage ---------------------------------------------------
     # Where uploaded messages are stored. The root is outside the Git
     # repository and outside any served directory. Startup refuses "/" , a home
