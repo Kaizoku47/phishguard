@@ -41,6 +41,7 @@ from app.models.email_evidence import (
     STATUS_PARSED,
     STATUS_PARSING,
 )
+from app.services.analysis.service import run_investigation
 from app.services.email import parse_email
 from app.services.email.models import ParseResult
 from app.services.evidence.store import (
@@ -266,6 +267,13 @@ async def ingest_message(
         )
         result = parse_published_evidence(store, stored.storage_id, settings)
         status = await persist_parse(session_factory, evidence_id, result)
+        if status != STATUS_DELETED:
+            try:
+                await run_investigation(evidence_id, session_factory, settings)
+            except Exception:
+                # The upload, parse and deterministic result are already
+                # committed. Supplementary investigation must not undo them.
+                logger.warning("post-ingestion investigation failed for %s", evidence_id)
         return {
             "id": evidence_id,
             "status": status,

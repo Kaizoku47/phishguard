@@ -47,15 +47,15 @@ flowchart TB
   Analyst["Analyst (human)"] -->|"uploads a suspicious message"| UI["React frontend"]
   UI -->|"HTTPS JSON"| API["FastAPI service"]
   API --> DB[("PostgreSQL")]
-  API --> Q[("Redis queue")]
-  Q --> Worker["Worker process"]
-  Worker --> DB
-  Worker -->|"guarded, allow-listed calls"| Intel["Threat intel providers"]
-  Worker --> Agent["AI investigation agent"]
-  Agent -->|"read-only tool calls"| Worker
-  Agent -->|"completion request"| LLM["LLM provider"]
-  Worker --> DB
+  API -->|"guarded, allow-listed calls"| Intel["Threat intel providers"]
+  API --> Agent["AI investigation agent"]
+  Agent -->|"read-only tool calls"| DB
+  Agent -->|"completion request"| LLM["NVIDIA NIM"]
 ```
+
+The MVP runs in one Python process with one Uvicorn worker. There is no Redis,
+queue or separate worker service; an earlier diagram describing those was
+stale.
 
 Trust boundaries, marked explicitly:
 
@@ -188,13 +188,13 @@ ends the investigation with what has been gathered.
 
 | Tool | Returns |
 |---|---|
-| `get_parsed_headers` | Header fields already extracted |
+| `get_headers` | Header fields already extracted |
 | `get_links` | Normalized links and their registered domains |
-| `get_attachment_metadata` | Filenames, types, sizes, hashes |
+| `get_attachments` | Filenames, types, sizes, hashes |
 | `get_signals` | Signals produced so far |
-| `lookup_domain_reputation` | Cached or freshly guarded provider result |
-| `lookup_hash_reputation` | Cached or freshly guarded provider result |
-| `record_finding` | Appends a narrative finding to the audit trail |
+| `lookup_domain` | An already-cached domain reputation result; no network |
+| `lookup_hash` | An already-cached hash reputation result; no network |
+| `record_finding` | Appends a narrative finding to the report |
 
 There is no shell tool, no file-write tool, and no fetch-any-URL tool.
 
@@ -204,9 +204,10 @@ found inside that data is reported as a finding, not followed. The agent's
 abilities are bounded by the tool list, so a successful injection still cannot
 reach the network or the database.
 
-**Auditability.** Each step records the tool name, the arguments, a result
-digest, and the rationale text. A reviewer can reconstruct the investigation
-without re-running it.
+**Auditability.** Tool calls are restricted to the fixed allow-list and their
+results are returned to the model as data. Per-step persistent audit storage is
+a later milestone; the current narrative and its status are stored on the
+analysis result row.
 
 ## 8. Deployment topology
 

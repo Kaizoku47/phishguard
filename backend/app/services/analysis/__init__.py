@@ -12,7 +12,7 @@ from app.services.analysis.score import (
     risk_band,
     score_signals,
 )
-from app.services.analysis.service import analyse_and_persist
+from app.services.analysis.service import analyse_and_persist, run_investigation, store_narrative
 from app.services.analysis.signals import (
     BRAND_DOMAINS,
     FREE_MAIL_DOMAINS,
@@ -39,5 +39,7 @@ __all__ = [
     "missing_evidence",
     "normalize_domain",
     "risk_band",
+    "run_investigation",
     "score_signals",
+    "store_narrative",
 ]

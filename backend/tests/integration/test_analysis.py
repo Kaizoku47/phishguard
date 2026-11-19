@@ -28,9 +28,14 @@ def _digest(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
+def _test_settings():
+    """Deterministic settings: the agent must not depend on ambient .env state."""
+    return get_settings().model_copy(update={"agent_enabled": False, "agent_api_key": None})
+
+
 @pytest.mark.asyncio
 async def test_t51_analysis_persists_one_authoritative_result() -> None:
-    settings = get_settings()
+    settings = _test_settings()
     url = settings.database_url_test
     validate_test_target(url)
     engine = create_async_engine(url, pool_pre_ping=True)
@@ -91,7 +96,7 @@ async def test_t51_analysis_persists_one_authoritative_result() -> None:
                 )
             )
 
-        result = await analyse_and_persist(evidence_id, factory)
+        result = await analyse_and_persist(evidence_id, factory, settings)
 
         async with factory() as session:
             rows = list((await session.execute(select(AnalysisResult))).scalars())
@@ -110,12 +115,12 @@ async def test_t51_analysis_persists_one_authoritative_result() -> None:
         assert all(item["reason"] == "api_key_not_configured" for item in intelligence["missing"])
         assert stored.engine_version == result.engine_version
         assert stored.narrative is None
-        assert stored.narrative_status == "unavailable"
-        assert stored.narrative_reason == "investigation pending"
+        assert stored.narrative_status == "disabled"
+        assert stored.narrative_reason == "no AI agent configured"
         assert any(item["id"] == "auth_results_unverifiable" for item in stored.signals)
 
         # T-52: repeat analysis leaves exactly one authoritative row.
-        second = await analyse_and_persist(evidence_id, factory)
+        second = await analyse_and_persist(evidence_id, factory, settings)
         assert second == result
         async with factory() as session:
             count_again = await session.scalar(select(func.count()).select_from(AnalysisResult))
@@ -128,7 +133,7 @@ async def test_t51_analysis_persists_one_authoritative_result() -> None:
 async def test_t50_provider_failure_does_not_change_deterministic_score(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    settings = get_settings()
+    settings = _test_settings()
     url = settings.database_url_test
     validate_test_target(url)
     engine = create_async_engine(url, pool_pre_ping=True)
@@ -207,7 +212,7 @@ async def test_t50_provider_failure_does_not_change_deterministic_score(
 async def test_analysis_does_not_block_event_loop_during_slow_lookup(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    settings = get_settings()
+    settings = _test_settings()
     url = settings.database_url_test
     validate_test_target(url)
     engine = create_async_engine(url, pool_pre_ping=True)
@@ -292,7 +297,7 @@ async def test_analysis_does_not_block_event_loop_during_slow_lookup(
 async def test_concurrent_analysis_is_idempotent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    settings = get_settings()
+    settings = _test_settings()
     url = settings.database_url_test
     validate_test_target(url)
     engine = create_async_engine(url, pool_pre_ping=True)

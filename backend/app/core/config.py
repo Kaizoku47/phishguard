@@ -214,6 +214,67 @@ class Settings(BaseSettings):
             raise ValueError("otx_api_key must not contain line breaks")
         return SecretStr(token)
 
+    # -- AI investigation agent (NVIDIA NIM) --------------------------------
+    agent_enabled: bool = Field(default=False, validation_alias="PHISHGUARD_AGENT_ENABLED")
+    agent_provider: Literal["nvidia_nim"] = Field(
+        default="nvidia_nim", validation_alias="PHISHGUARD_AGENT_PROVIDER"
+    )
+    agent_base_url: str = Field(
+        default="https://integrate.api.nvidia.com/v1",
+        validation_alias="PHISHGUARD_AGENT_BASE_URL",
+    )
+    agent_api_key: SecretStr | None = Field(
+        default=None, validation_alias="PHISHGUARD_AGENT_API_KEY"
+    )
+    agent_model: str = Field(
+        default="nvidia/nemotron-3-ultra-550b-a55b",
+        validation_alias="PHISHGUARD_AGENT_MODEL",
+        min_length=1,
+    )
+    agent_max_steps: Annotated[int, Field(ge=1, le=20)] = Field(
+        default=8, validation_alias="PHISHGUARD_AGENT_MAX_STEPS"
+    )
+    agent_timeout_seconds: Annotated[int, Field(ge=1, le=120)] = Field(
+        default=30, validation_alias="PHISHGUARD_AGENT_TIMEOUT_SECONDS"
+    )
+
+    @field_validator("agent_base_url")
+    @classmethod
+    def _validate_agent_base_url(cls, value: str) -> str:
+        parsed = urlparse(value)
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname != "integrate.api.nvidia.com"
+            or parsed.path.rstrip("/") != "/v1"
+            or parsed.port not in (None, 443)
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("agent_base_url must be the NVIDIA NIM HTTPS v1 endpoint")
+        return value
+
+    @field_validator("agent_api_key")
+    @classmethod
+    def _validate_agent_api_key(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is None:
+            return None
+        token = value.get_secret_value().strip()
+        if not token:
+            return None
+        if token in _SECRET_PLACEHOLDERS:
+            raise ValueError("agent_api_key is still a placeholder value")
+        if "\r" in token or "\n" in token:
+            raise ValueError("agent_api_key must not contain line breaks")
+        return SecretStr(token)
+
+    @model_validator(mode="after")
+    def _agent_requires_a_key(self) -> Settings:
+        if self.agent_enabled and self.agent_api_key is None:
+            raise ValueError("agent_api_key is required when the agent is enabled")
+        return self
+
     # -- Evidence storage ---------------------------------------------------
     # Where uploaded messages are stored. The root is outside the Git
     # repository and outside any served directory. Startup refuses "/" , a home

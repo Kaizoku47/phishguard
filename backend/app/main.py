@@ -20,6 +20,7 @@ from app.api.health import router as root_health_router
 from app.api.v1.router import api_v1_router
 from app.core.config import Settings, get_settings
 from app.core.exceptions import (
+    AnalysisNotPerformedError,
     AuthenticationRequiredError,
     EmptyPayloadError,
     EvidenceStorageError,
@@ -116,6 +117,10 @@ def _register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ParsingNotCompleteError)
     async def _handle_not_parsed(_: Request, exc: Exception) -> JSONResponse:
         return _fixed(409, "Parsed data is not available.")
+
+    @app.exception_handler(AnalysisNotPerformedError)
+    async def _handle_not_analysed(_: Request, exc: Exception) -> JSONResponse:
+        return _fixed(409, "Analysis has not been performed yet.")
 
     @app.exception_handler(PayloadTooLargeError)
     async def _handle_too_large(_: Request, exc: Exception) -> JSONResponse:
