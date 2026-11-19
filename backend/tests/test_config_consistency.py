@@ -8,6 +8,9 @@ configured, so the settings refuse to start.
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import pytest
 from app.core.config import Settings
 from pydantic import ValidationError
@@ -87,3 +90,37 @@ def test_shipped_placeholder_is_in_the_rejected_set() -> None:
     from app.core.config import _SECRET_PLACEHOLDERS
 
     assert "replace-me-before-first-run" in _SECRET_PLACEHOLDERS
+
+
+BACKEND_ROOT = Path(__file__).parents[1]
+
+
+def _locked_packages() -> list[str]:
+    lines = [
+        line.strip()
+        for line in (BACKEND_ROOT / "requirements.lock.txt").read_text().splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+    for line in lines:
+        assert re.fullmatch(r"[A-Za-z0-9_.-]+==[^\s;]+", line), line
+    return [line.split("==", 1)[0].lower() for line in lines]
+
+
+def test_dependency_lockfile_exists_and_is_fully_pinned() -> None:
+    assert _locked_packages()
+
+
+def test_dependency_lockfile_covers_direct_requirements() -> None:
+    locked = set(_locked_packages())
+    for name in (
+        "fastapi",
+        "sqlalchemy",
+        "pydantic",
+        "pydantic-settings",
+        "pytest",
+        "pytest-asyncio",
+        "ruff",
+        "asyncpg",
+        "psycopg",
+    ):
+        assert name in locked, name

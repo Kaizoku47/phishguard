@@ -5,10 +5,11 @@ email, analyses it in an isolated and non-executing pipeline, enriches it with
 threat intelligence, produces an explainable risk score, and gives an analyst a
 reviewable report backed by an auditable decision trail.
 
-> **Status: planning and repository foundation only.** No backend, frontend,
-> database schema, analysis module or AI agent code exists yet. Nothing in this
-> repository has been implemented or deployed. The sections below describe the
-> intended system, not delivered capability.
+> **Status: backend through Milestone 2.3.7.** Database, ingestion API,
+> deterministic analysis, OTX intelligence and the supplementary AI agent are
+> implemented. The frontend remains planned. AI investigation uses NVIDIA NIM
+> with Nemotron 3 Ultra and is disabled until `PHISHGUARD_AGENT_ENABLED=true`
+> with a valid key. Use synthetic evidence only when testing the agent.
 
 ---
 

@@ -188,6 +188,36 @@ docker compose -p phishguard-dev -f docker-compose.yml up -d postgres
 The service uses PostgreSQL 16 on `127.0.0.1:5434`, with a dedicated named
 volume and network. It does not use Redis in this milestone.
 
+## 8a. AI investigation (NVIDIA NIM testing)
+
+Milestone 2.3.7 adds an optional supplementary agent using NVIDIA NIM directly
+with `nvidia/nemotron-3-ultra-550b-a55b` at
+`https://integrate.api.nvidia.com/v1`. Obtain an API key from
+https://build.nvidia.com/ and set:
+
+```text
+PHISHGUARD_AGENT_ENABLED=true
+PHISHGUARD_AGENT_PROVIDER=nvidia_nim
+PHISHGUARD_AGENT_BASE_URL=https://integrate.api.nvidia.com/v1
+PHISHGUARD_AGENT_MODEL=nvidia/nemotron-3-ultra-550b-a55b
+PHISHGUARD_AGENT_API_KEY=<your-key>
+PHISHGUARD_AGENT_MAX_STEPS=8
+PHISHGUARD_AGENT_TIMEOUT_SECONDS=30
+```
+
+The agent remains disabled by default. When enabled, a valid key is required and
+placeholder values are refused. The key is a `SecretStr`, is never logged, and
+is sent only as a Bearer header to the fixed NIM endpoint. Requests use bounded
+timeouts and response size, one bounded retry, and honour a valid `Retry-After`
+up to 60 seconds; HTTP 429 becomes `quota exceeded` without further retries.
+An AI failure never changes the deterministic score, band, signals or engine
+version, and never blocks the report.
+
+**Synthetic data only.** During free-tier testing submit only synthetic email
+evidence. Never send real confidential mail or personal data to this
+development endpoint. User-selectable providers are a future milestone; NIM is
+the only implemented provider.
+
 ## 9. Third-party skills and licensing
 
 `.opencode/` contains a working OpenCode and ECC configuration, including skill

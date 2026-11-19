@@ -42,3 +42,7 @@ class EvidenceStorageError(PhishGuardError):
 
 class ParsingNotCompleteError(PhishGuardError):
     """Parsed data was requested before parsing completed."""
+
+
+class AnalysisNotPerformedError(PhishGuardError):
+    """The report was requested before deterministic analysis ran."""

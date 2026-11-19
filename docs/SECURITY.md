@@ -167,9 +167,11 @@ Rules:
 
 The agent is treated as a potentially manipulable component with no trust.
 
-- **Fixed, read-only tools.** The list in
-  [ARCHITECTURE.md](ARCHITECTURE.md#7-ai-investigation-agent) is exhaustive. No
-  shell, no filesystem write, no arbitrary URL fetch, no database write.
+- **Fixed, read-only tools.** The seven tools in authoritative architecture
+  §12.3 (`get_headers`, `get_signals`, `get_links`, `get_attachments`,
+  `lookup_domain`, `lookup_hash`, `record_finding`) are the complete allow-list.
+  Dispatch is deny-by-default: no shell, filesystem write, arbitrary URL fetch
+  or database write. The reputation lookup tools read cached results only.
 - **Budget.** A hard step limit per investigation prevents runaway loops and
   unbounded spend.
 - **Prompt injection assumed.** Message text, headers and provider payloads are
@@ -179,8 +181,9 @@ The agent is treated as a potentially manipulable component with no trust.
   effect outside the investigation.
 - **No authority over the verdict.** The agent cannot change the score. It
   explains and expands, and a human decides.
-- **Append-only audit.** Tool name, arguments, result digest and rationale are
-  recorded per step, so a reviewer can reconstruct the investigation.
+- **Narrow write path.** The agent writes only `narrative`, `narrative_status`
+  and `narrative_reason` through one row-scoped SQL update. Persistent per-step
+  audit storage is a later milestone.
 - **Output handling.** Agent narrative is rendered as plain text, never as HTML
   or Markdown with executable content.
 
