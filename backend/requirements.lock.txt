@@ -17,7 +17,7 @@ coverage==7.17.2
 cyclonedx-python-lib==11.12.0
 defusedxml==0.7.1
 docker==7.2.0
-fastapi==0.162.0
+fastapi==0.165.0
 filelock==4.2.10
 greenlet==3.5.6
 h11==0.16.0
