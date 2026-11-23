@@ -45,7 +45,7 @@ psycopg==3.3.8
 psycopg-binary==3.3.8
 py-serializable==2.2.0
 pydantic==2.14.3
-pydantic-settings==2.16.2
+pydantic-settings==2.16.3
 pydantic_core==2.50.4
 Pygments==2.21.0
 pyparsing==3.3.3
